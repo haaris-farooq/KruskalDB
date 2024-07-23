@@ -33,13 +33,49 @@ std::string Property::asString() const {
 }
 
 std::string Property::serialize() const {
-    // Implement serialization logic
-    // This is a placeholder implementation
-    return "Property serialization not implemented";
+    std::ostringstream oss;
+    oss << static_cast<int>(getType()) << ":";
+    
+    switch (getType()) {
+        case Type::Boolean:
+            oss << (asBool() ? "true" : "false");
+            break;
+        case Type::Integer:
+            oss << asInt();
+            break;
+        case Type::Double:
+            oss << asDouble();
+            break;
+        case Type::String:
+            oss << asString();
+            break;
+        default:
+            throw std::runtime_error("Unknown property type");
+    }
+    
+    return oss.str();
 }
 
 Property Property::deserialize(const std::string& data) {
-    // Implement deserialization logic
-    // This is a placeholder implementation
-    return Property();
+    std::istringstream iss(data);
+    std::string typeStr, valueStr;
+    
+    std::getline(iss, typeStr, ':');
+    std::getline(iss, valueStr);
+    
+    int typeInt = std::stoi(typeStr);
+    Type type = static_cast<Type>(typeInt);
+    
+    switch (type) {
+        case Type::Boolean:
+            return Property(valueStr == "true");
+        case Type::Integer:
+            return Property(std::stoi(valueStr));
+        case Type::Double:
+            return Property(std::stod(valueStr));
+        case Type::String:
+            return Property(valueStr);
+        default:
+            throw std::runtime_error("Unknown property type");
+    }
 }

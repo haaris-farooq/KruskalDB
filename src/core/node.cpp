@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-Node::Node(int id) : id(id) {}
+Node::Node(int id) : id(id), dirty(false) {}
 
 int Node::getId() const {
     return id;
@@ -64,13 +64,79 @@ const std::vector<int>& Node::getOutgoingEdges() const {
 }
 
 std::string Node::serialize() const {
-    // Implement serialization logic
-    // This is a placeholder implementation
-    return "Node serialization not implemented";
+    std::ostringstream oss;
+    
+    // Serialize ID
+    oss << id << "|";
+    
+    // Serialize properties
+    oss << properties.size() << "|";
+    for (const auto& [key, value] : properties) {
+        oss << key << ":" << value.serialize() << "|";
+    }
+    
+    // Serialize incoming edges
+    oss << incomingEdges.size() << "|";
+    for (int edgeId : incomingEdges) {
+        oss << edgeId << ",";
+    }
+    oss << "|";
+    
+    // Serialize outgoing edges
+    oss << outgoingEdges.size() << "|";
+    for (int edgeId : outgoingEdges) {
+        oss << edgeId << ",";
+    }
+    
+    return oss.str();
 }
 
 Node Node::deserialize(const std::string& data) {
-    // Implement deserialization logic
-    // This is a placeholder implementation
-    return Node(0);
+    std::istringstream iss(data);
+    std::string token;
+    
+    // Deserialize ID
+    std::getline(iss, token, '|');
+    Node node(std::stoi(token));
+    
+    // Deserialize properties
+    std::getline(iss, token, '|');
+    int propertyCount = std::stoi(token);
+    for (int i = 0; i < propertyCount; ++i) {
+        std::string keyValue;
+        std::getline(iss, keyValue, '|');
+        size_t colonPos = keyValue.find(':');
+        std::string key = keyValue.substr(0, colonPos);
+        std::string value = keyValue.substr(colonPos + 1);
+        node.setProperty(key, Property::deserialize(value));
+    }
+    
+    // Deserialize incoming edges
+    std::getline(iss, token, '|');
+    int incomingCount = std::stoi(token);
+    std::getline(iss, token, '|');
+    std::istringstream incomingStream(token);
+    std::string edgeId;
+    while (std::getline(incomingStream, edgeId, ',') && !edgeId.empty()) {
+        node.addEdge(std::stoi(edgeId), false);
+    }
+    
+    // Deserialize outgoing edges
+    std::getline(iss, token, '|');
+    int outgoingCount = std::stoi(token);
+    std::getline(iss, token);
+    std::istringstream outgoingStream(token);
+    while (std::getline(outgoingStream, edgeId, ',') && !edgeId.empty()) {
+        node.addEdge(std::stoi(edgeId), true);
+    }
+    
+    return node;
+}
+
+bool Node::isDirty() const {
+    return dirty;
+}
+
+void Node::setDirty(bool dirty) {
+    this->dirty = dirty;
 }

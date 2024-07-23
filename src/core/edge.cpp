@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 Edge::Edge(int id, int sourceNodeId, int targetNodeId, const std::string& type)
-    : id(id), sourceNodeId(sourceNodeId), targetNodeId(targetNodeId), type(type) {}
+    : id(id), sourceNodeId(sourceNodeId), targetNodeId(targetNodeId), type(type), dirty(false) {}
 
 int Edge::getId() const { return id; }
 void Edge::setId(int newId) { id = newId; }
@@ -42,13 +42,58 @@ std::vector<std::string> Edge::getPropertyKeys() const {
 }
 
 std::string Edge::serialize() const {
-    // Implement serialization logic
-    // This is a placeholder implementation
-    return "Edge serialization not implemented";
+    std::ostringstream oss;
+    
+    // Serialize ID, source node ID, target node ID, and type
+    oss << id << "|" << sourceNodeId << "|" << targetNodeId << "|" << type << "|";
+    
+    // Serialize properties
+    oss << properties.size() << "|";
+    for (const auto& [key, value] : properties) {
+        oss << key << ":" << value.serialize() << "|";
+    }
+    
+    return oss.str();
 }
 
 Edge Edge::deserialize(const std::string& data) {
-    // Implement deserialization logic
-    // This is a placeholder implementation
-    return Edge(0, 0, 0, "");
+    std::istringstream iss(data);
+    std::string token;
+    
+    // Deserialize ID, source node ID, target node ID, and type
+    std::getline(iss, token, '|');
+    int id = std::stoi(token);
+    
+    std::getline(iss, token, '|');
+    int sourceNodeId = std::stoi(token);
+    
+    std::getline(iss, token, '|');
+    int targetNodeId = std::stoi(token);
+    
+    std::getline(iss, token, '|');
+    std::string type = token;
+    
+    Edge edge(id, sourceNodeId, targetNodeId, type);
+    
+    // Deserialize properties
+    std::getline(iss, token, '|');
+    int propertyCount = std::stoi(token);
+    for (int i = 0; i < propertyCount; ++i) {
+        std::string keyValue;
+        std::getline(iss, keyValue, '|');
+        size_t colonPos = keyValue.find(':');
+        std::string key = keyValue.substr(0, colonPos);
+        std::string value = keyValue.substr(colonPos + 1);
+        edge.setProperty(key, Property::deserialize(value));
+    }
+    
+    return edge;
+}
+
+bool Edge::isDirty() const {
+    return dirty;
+}
+
+void Edge::setDirty(bool dirty) {
+    this->dirty = dirty;
 }

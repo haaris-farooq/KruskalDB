@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <sstream>
 #include "property.hpp"
 
 class Edge {
@@ -25,10 +26,14 @@ public:
     std::string serialize() const;
     static Edge deserialize(const std::string& data);
 
+    bool isDirty() const;
+    void setDirty(bool dirty);
+
 private:
     int id;
     int sourceNodeId;
     int targetNodeId;
+    bool dirty;
     std::string type;
     std::unordered_map<std::string, Property> properties;
 };

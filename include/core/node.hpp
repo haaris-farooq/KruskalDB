@@ -1,10 +1,11 @@
-// include/core/node.hpp
+// include/core/node.hp
 
 #pragma once
 
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <sstream>
 #include "core/property.hpp"
 
 class Node {
@@ -28,8 +29,12 @@ public:
     std::string serialize() const;
     static Node deserialize(const std::string& data);
 
+    bool isDirty() const;
+    void setDirty(bool dirty);
+
 private:
     int id;
+    bool dirty;
     std::unordered_map<std::string, Property> properties;
     std::vector<int> incomingEdges;
     std::vector<int> outgoingEdges;

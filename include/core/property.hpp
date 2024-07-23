@@ -5,6 +5,7 @@
 #include <string>
 #include <variant>
 #include <stdexcept>
+#include <sstream>
 
 class Property {
 public:

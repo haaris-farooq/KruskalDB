@@ -55,12 +55,20 @@ std::shared_ptr<Node> StorageEngine::loadNodeFromDisk(int nodeId) {
     }
     
     nodesFile.seekg(offset);
-    // Read node data from disk
-    // Deserialize node data
-    // Return std::shared_ptr<Node>
     
-    // Placeholder implementation
-    return std::make_shared<Node>(nodeId);
+    // Read the serialized data length
+    int dataLength;
+    nodesFile.read(reinterpret_cast<char*>(&dataLength), sizeof(int));
+    
+    // Read the serialized node data
+    std::string serializedData(dataLength, '\0');
+    nodesFile.read(&serializedData[0], dataLength);
+    
+    // Deserialize node data
+    Node deserializedNode = Node::deserialize(serializedData);
+    
+    // Create and return a shared pointer to the deserialized node
+    return std::make_shared<Node>(std::move(deserializedNode));
 }
 
 void StorageEngine::saveNodeToDisk(const Node& node) {
@@ -68,8 +76,16 @@ void StorageEngine::saveNodeToDisk(const Node& node) {
     long offset = nodesFile.tellp();
     
     // Serialize node data
-    // Write node data to disk
+    std::string serializedData = node.serialize();
     
+    // Write the length of the serialized data
+    int dataLength = serializedData.length();
+    nodesFile.write(reinterpret_cast<const char*>(&dataLength), sizeof(int));
+    
+    // Write the serialized node data to disk
+    nodesFile.write(serializedData.c_str(), serializedData.length());
+    
+    // Update the index
     indexingEngine->addNodeIndex(node.getId(), offset);
 }
 
@@ -107,12 +123,22 @@ std::shared_ptr<Edge> StorageEngine::loadEdgeFromDisk(int edgeId) {
     }
     
     edgesFile.seekg(offset);
-    // Read edge data from disk
-    // Deserialize edge data
-    // Return std::shared_ptr<Edge>
     
-    // Placeholder implementation
-    return std::make_shared<Edge>(edgeId, 0, 0, ""); // Assuming Edge constructor takes id, source, target, and type
+    // Read the serialized data length
+    int dataLength;
+    edgesFile.read(reinterpret_cast<char*>(&dataLength), sizeof(int));
+    
+    // Read the serialized edge data
+    std::string serializedData(dataLength, '\0');
+    edgesFile.read(&serializedData[0], dataLength);
+    
+    // Deserialize edge data
+    Edge deserializedEdge = Edge::deserialize(serializedData);
+    
+    // Create and return a shared pointer to the deserialized edge
+    auto edge = std::make_shared<Edge>(std::move(deserializedEdge));
+    edge->setDirty(false);  // The edge just loaded from disk is not dirty
+    return edge;
 }
 
 void StorageEngine::saveEdgeToDisk(const Edge& edge) {
@@ -120,9 +146,20 @@ void StorageEngine::saveEdgeToDisk(const Edge& edge) {
     long offset = edgesFile.tellp();
     
     // Serialize edge data
-    // Write edge data to disk
+    std::string serializedData = edge.serialize();
     
+    // Write the length of the serialized data
+    int dataLength = serializedData.length();
+    edgesFile.write(reinterpret_cast<const char*>(&dataLength), sizeof(int));
+    
+    // Write the serialized edge data to disk
+    edgesFile.write(serializedData.c_str(), serializedData.length());
+    
+    // Update the index
     indexingEngine->addEdgeIndex(edge.getId(), offset);
+    
+    // After saving, the edge is no longer dirty
+    const_cast<Edge&>(edge).setDirty(false);
 }
 
 void StorageEngine::flush() {
