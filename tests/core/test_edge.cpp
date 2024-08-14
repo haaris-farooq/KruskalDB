@@ -7,7 +7,6 @@ protected:
     void SetUp() override {
         edge = std::make_unique<Edge>(1, 10, 20, "TEST_TYPE");
     }
-
     std::unique_ptr<Edge> edge;
 };
 
@@ -24,24 +23,23 @@ TEST_F(EdgeTest, SetAndGetId) {
 }
 
 TEST_F(EdgeTest, Properties) {
-    edge->setProperty("weight", Property(3.14));
-    edge->setProperty("active", Property(true));
-
-    EXPECT_EQ(edge->getProperty("weight").asDouble(), 3.14);
-    EXPECT_EQ(edge->getProperty("active").asBool(), true);
-    EXPECT_THROW(edge->getProperty("nonexistent"), std::out_of_range);
+    edge->setProperty("weight", 3.14);
+    edge->setProperty("active", true);
+    EXPECT_EQ(edge->getProperty<double>("weight"), 3.14);
+    EXPECT_EQ(edge->getProperty<bool>("active"), true);
+    EXPECT_THROW(edge->getProperty<std::string>("nonexistent"), std::out_of_range);
 }
 
 TEST_F(EdgeTest, HasAndRemoveProperty) {
-    edge->setProperty("test", Property("value"));
+    edge->setProperty("test", std::string("value"));
     EXPECT_TRUE(edge->hasProperty("test"));
     edge->removeProperty("test");
     EXPECT_FALSE(edge->hasProperty("test"));
 }
 
 TEST_F(EdgeTest, GetPropertyKeys) {
-    edge->setProperty("key1", Property("value1"));
-    edge->setProperty("key2", Property("value2"));
+    edge->setProperty("key1", std::string("value1"));
+    edge->setProperty("key2", std::string("value2"));
     auto keys = edge->getPropertyKeys();
     EXPECT_EQ(keys.size(), 2);
     EXPECT_TRUE(std::find(keys.begin(), keys.end(), "key1") != keys.end());
@@ -49,16 +47,45 @@ TEST_F(EdgeTest, GetPropertyKeys) {
 }
 
 TEST_F(EdgeTest, SerializeAndDeserialize) {
-    edge->setProperty("weight", Property(3.14));
-    edge->setProperty("active", Property(true));
-
+    edge->setProperty("weight", 3.14);
+    edge->setProperty("active", true);
     std::string serialized = edge->serialize();
     Edge deserialized = Edge::deserialize(serialized);
-
     EXPECT_EQ(deserialized.getId(), edge->getId());
     EXPECT_EQ(deserialized.getSourceNodeId(), edge->getSourceNodeId());
     EXPECT_EQ(deserialized.getTargetNodeId(), edge->getTargetNodeId());
     EXPECT_EQ(deserialized.getType(), edge->getType());
-    EXPECT_EQ(deserialized.getProperty("weight").asDouble(), 3.14);
-    EXPECT_EQ(deserialized.getProperty("active").asBool(), true);
+    EXPECT_EQ(deserialized.getProperty<double>("weight"), 3.14);
+    EXPECT_EQ(deserialized.getProperty<bool>("active"), true);
+}
+
+TEST_F(EdgeTest, PropertyTypes) {
+    edge->setProperty("int_prop", 42);
+    edge->setProperty("double_prop", 3.14);
+    edge->setProperty("string_prop", std::string("test"));
+    edge->setProperty("bool_prop", true);
+
+    EXPECT_EQ(edge->getProperty<int>("int_prop"), 42);
+    EXPECT_EQ(edge->getProperty<double>("double_prop"), 3.14);
+    EXPECT_EQ(edge->getProperty<std::string>("string_prop"), "test");
+    EXPECT_EQ(edge->getProperty<bool>("bool_prop"), true);
+
+    // Test wrong type retrieval
+    EXPECT_THROW(edge->getProperty<double>("int_prop"), std::bad_variant_access);
+    EXPECT_THROW(edge->getProperty<std::string>("bool_prop"), std::bad_variant_access);
+}
+
+TEST_F(EdgeTest, SerializeDeserializeAllTypes) {
+    edge->setProperty("int_prop", 42);
+    edge->setProperty("double_prop", 3.14);
+    edge->setProperty("string_prop", std::string("test"));
+    edge->setProperty("bool_prop", true);
+
+    std::string serialized = edge->serialize();
+    Edge deserialized = Edge::deserialize(serialized);
+
+    EXPECT_EQ(deserialized.getProperty<int>("int_prop"), 42);
+    EXPECT_EQ(deserialized.getProperty<double>("double_prop"), 3.14);
+    EXPECT_EQ(deserialized.getProperty<std::string>("string_prop"), "test");
+    EXPECT_EQ(deserialized.getProperty<bool>("bool_prop"), true);
 }

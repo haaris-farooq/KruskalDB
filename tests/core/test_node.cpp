@@ -21,26 +21,26 @@ TEST_F(NodeTest, SetAndGetId) {
 }
 
 TEST_F(NodeTest, Properties) {
-    node->setProperty("name", Property("Test Node"));
-    node->setProperty("value", Property(42));
-    node->setProperty("active", Property(true));
+    node->setProperty("name", std::string("Test Node"));
+    node->setProperty("value", 42);
+    node->setProperty("active", true);
 
-    EXPECT_EQ(node->getProperty("name").asString(), "Test Node");
-    EXPECT_EQ(node->getProperty("value").asInt(), 42);
-    EXPECT_EQ(node->getProperty("active").asBool(), true);
-    EXPECT_THROW(node->getProperty("nonexistent"), std::out_of_range);
+    EXPECT_EQ(node->getProperty<std::string>("name"), "Test Node");
+    EXPECT_EQ(node->getProperty<int>("value"), 42);
+    EXPECT_EQ(node->getProperty<bool>("active"), true);
+    EXPECT_THROW(node->getProperty<std::string>("nonexistent"), std::out_of_range);
 }
 
 TEST_F(NodeTest, HasAndRemoveProperty) {
-    node->setProperty("test", Property("value"));
+    node->setProperty("test", std::string("value"));
     EXPECT_TRUE(node->hasProperty("test"));
     node->removeProperty("test");
     EXPECT_FALSE(node->hasProperty("test"));
 }
 
 TEST_F(NodeTest, GetPropertyKeys) {
-    node->setProperty("key1", Property("value1"));
-    node->setProperty("key2", Property("value2"));
+    node->setProperty("key1", std::string("value1"));
+    node->setProperty("key2", std::string("value2"));
     auto keys = node->getPropertyKeys();
     EXPECT_EQ(keys.size(), 2);
     EXPECT_TRUE(std::find(keys.begin(), keys.end(), "key1") != keys.end());
@@ -65,8 +65,8 @@ TEST_F(NodeTest, Edges) {
 }
 
 TEST_F(NodeTest, SerializeAndDeserialize) {
-    node->setProperty("name", Property("Test Node"));
-    node->setProperty("value", Property(42));
+    node->setProperty("name", std::string("Test Node"));
+    node->setProperty("value", 42);
     node->addEdge(1, true);
     node->addEdge(2, false);
 
@@ -88,14 +88,14 @@ TEST_F(NodeTest, SerializeAndDeserialize) {
 
     // Check Properties
     try {
-        EXPECT_EQ(deserialized.getProperty("name").asString(), "Test Node") << "Property 'name' mismatch: Expected 'Test Node' but got " << deserialized.getProperty("name").asString();
+        EXPECT_EQ(deserialized.getProperty<std::string>("name"), "Test Node") << "Property 'name' mismatch: Expected 'Test Node' but got " << deserialized.getProperty<std::string>("name");
     } catch (const std::exception& e) {
         std::cout << "Error while getting property 'name': " << e.what() << std::endl;
         throw;
     }
 
     try {
-        EXPECT_EQ(deserialized.getProperty("value").asInt(), 42) << "Property 'value' mismatch: Expected 42 but got " << deserialized.getProperty("value").asInt();
+        EXPECT_EQ(deserialized.getProperty<int>("value"), 42) << "Property 'value' mismatch: Expected 42 but got " << deserialized.getProperty<int>("value");
     } catch (const std::exception& e) {
         std::cout << "Error while getting property 'value': " << e.what() << std::endl;
         throw;
@@ -103,7 +103,7 @@ TEST_F(NodeTest, SerializeAndDeserialize) {
 
     // Check non-existent property
     try {
-        deserialized.getProperty("nonexistent");
+        deserialized.getProperty<std::string>("nonexistent");
         FAIL() << "Expected std::out_of_range for nonexistent property";
     } catch (const std::out_of_range&) {
         SUCCEED();
@@ -130,4 +130,3 @@ TEST_F(NodeTest, SerializeAndDeserialize) {
     EXPECT_EQ(deserialized.getOutgoingEdges().size(), 1) << "Outgoing edges size mismatch: Expected 1 but got " << deserialized.getOutgoingEdges().size();
     EXPECT_EQ(deserialized.getIncomingEdges().size(), 1) << "Incoming edges size mismatch: Expected 1 but got " << deserialized.getIncomingEdges().size();
 }
-
