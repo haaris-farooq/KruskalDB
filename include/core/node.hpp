@@ -49,7 +49,8 @@ public:
 private:
     int id;
     bool dirty;
-    std::unordered_map<std::string, std::variant<BoolProperty, IntProperty, DoubleProperty, StringProperty>> properties;
+    using PropertyVariant = std::variant<Property<bool>, Property<int>, Property<double>, Property<std::string>>;
+    std::unordered_map<std::string, PropertyVariant> properties;
     std::vector<int> incomingEdges;
     std::vector<int> outgoingEdges;
 };

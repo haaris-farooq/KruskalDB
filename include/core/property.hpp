@@ -1,4 +1,4 @@
-// property.hpp
+// include/core/property.hpp
 #pragma once
 #include <string>
 #include <sstream>
@@ -8,13 +8,19 @@
 template<typename T>
 class Property {
 public:
+    Property() : value_() {} // Default constructor
     Property(const T& value) : value_(value) {}
 
     T getValue() const { return value_; }
 
     std::string serialize() const {
         std::ostringstream oss;
-        oss << getTypeId() << ":" << value_;
+        oss << getTypeId() << ":";
+        if constexpr (std::is_same_v<T, bool>) {
+            oss << (value_ ? "true" : "false");
+        } else {
+            oss << value_;
+        }
         return oss.str();
     }
 
@@ -61,7 +67,7 @@ private:
     struct always_false : std::false_type {};
 };
 
-
+// Specializations for supported types
 using BoolProperty = Property<bool>;
 using IntProperty = Property<int>;
 using DoubleProperty = Property<double>;

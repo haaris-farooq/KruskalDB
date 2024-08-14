@@ -46,15 +46,12 @@ std::string Edge::serialize() const {
     // Serialize properties
     oss << properties.size() << "|";
 
-    std::vector<std::pair<std::string, std::string>> sortedProperties;
     for (const auto& [key, value] : properties) {
-        std::string serializedValue = std::visit([](const auto& prop) { return prop.serialize(); }, value);
-        sortedProperties.emplace_back(key, serializedValue);
-    }
-    std::sort(sortedProperties.begin(), sortedProperties.end());
-
-    for (const auto& [key, value] : sortedProperties) {
-        oss << key << ":" << value << "|";
+        oss << key << ":";
+        std::visit([&oss](const auto& prop) {
+            oss << prop.serialize();
+        }, value);
+        oss << "|";
     }
     
     return oss.str();

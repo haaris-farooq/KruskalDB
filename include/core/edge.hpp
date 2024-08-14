@@ -47,5 +47,6 @@ private:
     int targetNodeId;
     std::string type;
     bool dirty;
-    std::unordered_map<std::string, std::variant<BoolProperty, IntProperty, DoubleProperty, StringProperty>> properties;
+    using PropertyVariant = std::variant<Property<bool>, Property<int>, Property<double>, Property<std::string>>;
+    std::unordered_map<std::string, PropertyVariant> properties;
 };
