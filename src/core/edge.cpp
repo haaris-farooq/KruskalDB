@@ -1,28 +1,23 @@
-// edge.cpp
-
-#include "include/core/edge.hpp"
+// src/core/edge.cpp
+#include "core/edge.hpp"
 #include <stdexcept>
+#include <algorithm>
 
 Edge::Edge(int id, int sourceNodeId, int targetNodeId, const std::string& type)
     : id(id), sourceNodeId(sourceNodeId), targetNodeId(targetNodeId), type(type), dirty(false) {}
 
 int Edge::getId() const { return id; }
-void Edge::setId(int newId) { id = newId; }
+
+void Edge::setId(int newId) {
+    id = newId;
+    setDirty(true);
+}
+
 int Edge::getSourceNodeId() const { return sourceNodeId; }
+
 int Edge::getTargetNodeId() const { return targetNodeId; }
+
 std::string Edge::getType() const { return type; }
-
-void Edge::setProperty(const std::string& key, const Property& value) {
-    properties[key] = value;
-}
-
-Property Edge::getProperty(const std::string& key) const {
-    auto it = properties.find(key);
-    if (it != properties.end()) {
-        return it->second;
-    }
-    throw std::out_of_range("Property not found");
-}
 
 bool Edge::hasProperty(const std::string& key) const {
     return properties.find(key) != properties.end();
@@ -30,6 +25,7 @@ bool Edge::hasProperty(const std::string& key) const {
 
 void Edge::removeProperty(const std::string& key) {
     properties.erase(key);
+    setDirty(true);
 }
 
 std::vector<std::string> Edge::getPropertyKeys() const {
@@ -49,8 +45,16 @@ std::string Edge::serialize() const {
     
     // Serialize properties
     oss << properties.size() << "|";
+
+    std::vector<std::pair<std::string, std::string>> sortedProperties;
     for (const auto& [key, value] : properties) {
-        oss << key << ":" << value.serialize() << "|";
+        std::string serializedValue = std::visit([](const auto& prop) { return prop.serialize(); }, value);
+        sortedProperties.emplace_back(key, serializedValue);
+    }
+    std::sort(sortedProperties.begin(), sortedProperties.end());
+
+    for (const auto& [key, value] : sortedProperties) {
+        oss << key << ":" << value << "|";
     }
     
     return oss.str();
@@ -63,13 +67,10 @@ Edge Edge::deserialize(const std::string& data) {
     // Deserialize ID, source node ID, target node ID, and type
     std::getline(iss, token, '|');
     int id = std::stoi(token);
-    
     std::getline(iss, token, '|');
     int sourceNodeId = std::stoi(token);
-    
     std::getline(iss, token, '|');
     int targetNodeId = std::stoi(token);
-    
     std::getline(iss, token, '|');
     std::string type = token;
     
@@ -84,7 +85,25 @@ Edge Edge::deserialize(const std::string& data) {
         size_t colonPos = keyValue.find(':');
         std::string key = keyValue.substr(0, colonPos);
         std::string value = keyValue.substr(colonPos + 1);
-        edge.setProperty(key, Property::deserialize(value));
+        
+        // Determine property type and deserialize
+        char typeChar = value[0];
+        switch (typeChar) {
+            case '0':
+                edge.setProperty(key, BoolProperty::deserialize(value).getValue());
+                break;
+            case '1':
+                edge.setProperty(key, IntProperty::deserialize(value).getValue());
+                break;
+            case '2':
+                edge.setProperty(key, DoubleProperty::deserialize(value).getValue());
+                break;
+            case '3':
+                edge.setProperty(key, StringProperty::deserialize(value).getValue());
+                break;
+            default:
+                throw std::runtime_error("Unknown property type during deserialization");
+        }
     }
     
     return edge;

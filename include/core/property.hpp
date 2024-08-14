@@ -1,38 +1,68 @@
-// include/core/property.hpp
-
+// property.hpp
 #pragma once
-
 #include <string>
-#include <variant>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
+#include <type_traits>
 
+template<typename T>
 class Property {
 public:
-    enum class Type {
-        Null,
-        Boolean,
-        Integer,
-        Double,
-        String
-    };
+    Property(const T& value) : value_(value) {}
 
-    Property();  // Creates a null property
-    Property(bool value);
-    Property(int value);
-    Property(double value);
-    Property(const std::string& value);
+    T getValue() const { return value_; }
 
-    Type getType() const;
-    
-    bool asBool() const;
-    int asInt() const;
-    double asDouble() const;
-    std::string asString() const;
+    std::string serialize() const {
+        std::ostringstream oss;
+        oss << getTypeId() << ":" << value_;
+        return oss.str();
+    }
 
-    std::string serialize() const;
-    static Property deserialize(const std::string& data);
+    static Property<T> deserialize(const std::string& data) {
+        std::istringstream iss(data);
+        std::string typeStr, valueStr;
+        std::getline(iss, typeStr, ':');
+        std::getline(iss, valueStr);
+
+        if (std::stoi(typeStr) != getTypeId()) {
+            throw std::runtime_error("Type mismatch during deserialization");
+        }
+
+        if constexpr (std::is_same_v<T, bool>) {
+            return Property<T>(valueStr == "true");
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return Property<T>(valueStr);
+        } else {
+            return Property<T>(fromString<T>(valueStr));
+        }
+    }
 
 private:
-    std::variant<std::monostate, bool, int, double, std::string> value;
+    T value_;
+
+    static constexpr int getTypeId() {
+        if constexpr (std::is_same_v<T, bool>) return 0;
+        else if constexpr (std::is_same_v<T, int>) return 1;
+        else if constexpr (std::is_same_v<T, double>) return 2;
+        else if constexpr (std::is_same_v<T, std::string>) return 3;
+        else static_assert(always_false<T>::value, "Unsupported type");
+    }
+
+    template<typename U>
+    static U fromString(const std::string& str) {
+        std::istringstream iss(str);
+        U result;
+        iss >> result;
+        return result;
+    }
+
+    // Helper to make static_assert dependent on T
+    template<typename>
+    struct always_false : std::false_type {};
 };
+
+
+using BoolProperty = Property<bool>;
+using IntProperty = Property<int>;
+using DoubleProperty = Property<double>;
+using StringProperty = Property<std::string>;

@@ -1,8 +1,7 @@
 // src/core/node.cpp
-
 #include "core/node.hpp"
-#include <algorithm>
-#include <stdexcept>
+
+Node::Node() : id(0), dirty(false) {}
 
 Node::Node(int id) : id(id), dirty(false) {}
 
@@ -12,18 +11,7 @@ int Node::getId() const {
 
 void Node::setId(int newId) {
     id = newId;
-}
-
-void Node::setProperty(const std::string& key, const Property& value) {
-    properties[key] = value;
-}
-
-Property Node::getProperty(const std::string& key) const {
-    auto it = properties.find(key);
-    if (it != properties.end()) {
-        return it->second;
-    }
-    throw std::out_of_range("Property not found");
+    setDirty(true);
 }
 
 bool Node::hasProperty(const std::string& key) const {
@@ -32,6 +20,7 @@ bool Node::hasProperty(const std::string& key) const {
 
 void Node::removeProperty(const std::string& key) {
     properties.erase(key);
+    setDirty(true);
 }
 
 std::vector<std::string> Node::getPropertyKeys() const {
@@ -47,12 +36,14 @@ void Node::addEdge(int edgeId, bool isOutgoing) {
     auto& edges = isOutgoing ? outgoingEdges : incomingEdges;
     if (std::find(edges.begin(), edges.end(), edgeId) == edges.end()) {
         edges.push_back(edgeId);
+        setDirty(true);
     }
 }
 
 void Node::removeEdge(int edgeId, bool isOutgoing) {
     auto& edges = isOutgoing ? outgoingEdges : incomingEdges;
     edges.erase(std::remove(edges.begin(), edges.end(), edgeId), edges.end());
+    setDirty(true);
 }
 
 const std::vector<int>& Node::getIncomingEdges() const {
@@ -71,8 +62,16 @@ std::string Node::serialize() const {
     
     // Serialize properties
     oss << properties.size() << "|";
+
+    std::vector<std::pair<std::string, std::string>> sortedProperties;
     for (const auto& [key, value] : properties) {
-        oss << key << ":" << value.serialize() << "|";
+        std::string serializedValue = std::visit([](const auto& prop) { return prop.serialize(); }, value);
+        sortedProperties.emplace_back(key, serializedValue);
+    }
+    std::sort(sortedProperties.begin(), sortedProperties.end());
+
+    for (const auto& [key, value] : sortedProperties) {
+        oss << key << ":" << value << "|";
     }
     
     // Serialize incoming edges
@@ -87,6 +86,7 @@ std::string Node::serialize() const {
     for (int edgeId : outgoingEdges) {
         oss << edgeId << ",";
     }
+    oss << "|";
     
     return oss.str();
 }
@@ -108,7 +108,25 @@ Node Node::deserialize(const std::string& data) {
         size_t colonPos = keyValue.find(':');
         std::string key = keyValue.substr(0, colonPos);
         std::string value = keyValue.substr(colonPos + 1);
-        node.setProperty(key, Property::deserialize(value));
+        
+        // Determine property type and deserialize
+        char typeChar = value[0];
+        switch (typeChar) {
+            case '0':
+                node.setProperty(key, BoolProperty::deserialize(value).getValue());
+                break;
+            case '1':
+                node.setProperty(key, IntProperty::deserialize(value).getValue());
+                break;
+            case '2':
+                node.setProperty(key, DoubleProperty::deserialize(value).getValue());
+                break;
+            case '3':
+                node.setProperty(key, StringProperty::deserialize(value).getValue());
+                break;
+            default:
+                throw std::runtime_error("Unknown property type during deserialization");
+        }
     }
     
     // Deserialize incoming edges
@@ -124,7 +142,7 @@ Node Node::deserialize(const std::string& data) {
     // Deserialize outgoing edges
     std::getline(iss, token, '|');
     int outgoingCount = std::stoi(token);
-    std::getline(iss, token);
+    std::getline(iss, token, '|');
     std::istringstream outgoingStream(token);
     while (std::getline(outgoingStream, edgeId, ',') && !edgeId.empty()) {
         node.addEdge(std::stoi(edgeId), true);
